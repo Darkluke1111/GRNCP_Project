@@ -10,8 +10,6 @@ import java.util.stream.Collectors;
  * Created by lg18 on 21.12.2017.
  */
 public class Message {
-    public final static Pattern linepattern = Pattern.compile("^(\\w+):(.+)$");
-
     protected final  Map<MTag,String> tags;
     private final MessageType mType;
 
@@ -42,7 +40,7 @@ public class Message {
                 .collect(Collectors.toSet());
 
         if(!missingTags.isEmpty()) {
-            throw new MessageFormatException(missingTags);
+            throw new MessageFormatException(ErrorPriority.ERROR, missingTags);
         } else {
             return this;
         }
