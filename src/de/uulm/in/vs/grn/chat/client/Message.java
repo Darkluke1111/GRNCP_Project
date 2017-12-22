@@ -46,7 +46,11 @@ public class Message {
         }
     }
 
-    public String getTag(MTag tag) {
+    public Map<MTag,String> getTags() {
+        return tags;
+    }
+
+    public String getTagContent(MTag tag) {
         return tags.get(tag);
     }
 

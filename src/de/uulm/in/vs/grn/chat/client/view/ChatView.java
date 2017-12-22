@@ -17,11 +17,14 @@ public class ChatView {
     public TextArea chatBox;
     public TextField inputBox;
     public Label infoLabel;
+    public ListView userList;
 
     private BorderPane root;
     private GridPane chatLayout;
     private HBox inputLine;
+    private SplitPane splitter;
 
+    private MenuItem connect;
     private Menu options;
     private MenuBar menuBar;
     private Button send;
@@ -57,9 +60,17 @@ public class ChatView {
 
         chatLayout.add(chatBox,1,1);
         chatLayout.add(inputLine,1,2);
-        root.setCenter(chatLayout);
 
+        userList = new ListView();
+        splitter = new SplitPane();
+
+        splitter.getItems().addAll(userList,chatLayout);
+
+        root.setCenter(splitter);
+
+        connect = new MenuItem("Connect");
         options = new Menu("Options");
+        options.getItems().add(connect);
         menuBar = new MenuBar();
         menuBar.getMenus().add(options);
         root.setTop(menuBar);
@@ -67,6 +78,8 @@ public class ChatView {
         infoLabel = new Label("Started Client");
         infoLabel.setPadding(new Insets(2,2,2,2));
         root.setBottom(infoLabel);
+
+
 
 
 
@@ -83,5 +96,6 @@ public class ChatView {
         });
 
         send.setOnAction(e -> c.handleSendMessage(inputBox.getText()));
+        connect.setOnAction(c::handleConnectPubSub);
     }
 }

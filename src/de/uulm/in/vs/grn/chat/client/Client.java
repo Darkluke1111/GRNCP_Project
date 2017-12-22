@@ -18,6 +18,7 @@ public class Client extends Application{
         primaryStage.setScene(view.scene);
         primaryStage.setHeight(600);
         primaryStage.setWidth(600);
+        primaryStage.setTitle("GRNCP Chat Client");
         primaryStage.show();
     }
 
