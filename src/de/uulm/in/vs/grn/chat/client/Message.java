@@ -46,27 +46,27 @@ public class Message {
         }
     }
 
-    public Message buildSendMessage(String text) throws MessageFormatException {
+    public static Message buildSendMessage(String text) throws MessageFormatException {
         Message msg = new Message(MessageType.SEND)
             .withTag(MTag.Text, text)
             .validate();
         return msg;
     }
 
-    public Message buildLoginMessage(String usrName) throws MessageFormatException {
+    public static Message buildLoginMessage(String usrName) throws MessageFormatException {
         Message msg = new Message(MessageType.LOGIN)
             .withTag(MTag.Username, usrName)
             .validate();
         return msg;
     }
 
-    public Message buildPingMessage() throws MessageFormatException {
+    public static Message buildPingMessage() throws MessageFormatException {
         Message msg = new Message(MessageType.PING)
             .validate();
         return msg;
     }
 
-    public Message buildByeMessage() throws MessageFormatException {
+    public static Message buildByeMessage() throws MessageFormatException {
         Message msg = new Message(MessageType.BYE)
             .validate();
         return msg;
@@ -86,5 +86,20 @@ public class Message {
 
     public MessageType getType() {
         return mType;
+    }
+
+    public String toSendFormat() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(mType.toString())
+            .append(" ")
+            .append(ProtocolConstants.VERSION)
+            .append("\r\n");
+        for(MTag tag : MTag.values()) {
+            if(tags.containsKey(tag)) {
+                sb.append(MTag.formatTag(tag, tags.get(tag)));
+            }
+        }
+        sb.append("\r\n");
+        return sb.toString();
     }
 }

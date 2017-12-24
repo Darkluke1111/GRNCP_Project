@@ -10,4 +10,14 @@ public enum MTag {
     Usernames,
     Description,
     Reason;
+
+    public static String formatTag(MTag tag, String content) {
+        if(tag == MTag.Text) {
+            //TODO handle long messages
+        }
+        if(tag == MTag.Username) {
+            //TODO handle wrong usernames
+        }
+        return tag.toString() + ": " + content + "\r\n";
+    }
 }
