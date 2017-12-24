@@ -46,6 +46,32 @@ public class Message {
         }
     }
 
+    public Message buildSendMessage(String text) throws MessageFormatException {
+        Message msg = new Message(MessageType.SEND)
+            .withTag(MTag.Text, text)
+            .validate();
+        return msg;
+    }
+
+    public Message buildLoginMessage(String usrName) throws MessageFormatException {
+        Message msg = new Message(MessageType.LOGIN)
+            .withTag(MTag.Username, usrName)
+            .validate();
+        return msg;
+    }
+
+    public Message buildPingMessage() throws MessageFormatException {
+        Message msg = new Message(MessageType.PING)
+            .validate();
+        return msg;
+    }
+
+    public Message buildByeMessage() throws MessageFormatException {
+        Message msg = new Message(MessageType.BYE)
+            .validate();
+        return msg;
+    }
+
     public Map<MTag,String> getTags() {
         return tags;
     }

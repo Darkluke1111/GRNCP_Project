@@ -7,7 +7,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.regex.Matcher;
 
-public class Connection implements AutoCloseable{
+public class Connection implements AutoCloseable {
   protected final InetAddress serverHost;
   protected final int serverPort;
 
@@ -28,8 +28,11 @@ public class Connection implements AutoCloseable{
 
 
   public boolean isConnected() {
-    if (connection == null || connection.isClosed()) return false;
-    else return true;
+    if (connection == null || connection.isClosed()) {
+      return false;
+    } else {
+      return true;
+    }
   }
 
   @Override
@@ -41,20 +44,22 @@ public class Connection implements AutoCloseable{
   public void connect() throws IOException {
     connection = new Socket(serverHost, serverPort);
     reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        while(true) {
-          try {
-            Message msg = readMessage();
-            System.out.println(msg.getTagContent(MTag.Text));
-          } catch (IOException e) {
-            e.printStackTrace();
-          } catch (MessageFormatException e) {
-            e.printStackTrace();
+    new Thread(() -> {
+      while (true) {
+        try {
+          Message msg = readMessage();
+          if (msg.getType() == MessageType.MESSAGE) {
+            System.out.println(msg.getTagContent(MTag.Username) + ": " + msg.getTagContent(MTag.Text));
           }
-
+          if(msg.getType() == MessageType.EVENT) {
+            System.out.println(msg.getTagContent(MTag.Description));
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        } catch (MessageFormatException e) {
+          e.printStackTrace();
         }
+
       }
     }).start();
   }
@@ -65,6 +70,7 @@ public class Connection implements AutoCloseable{
 
     //Read first line
     line = reader.readLine();
+
     if (line != null) {
 
       //Test for the right protocol version
@@ -82,7 +88,8 @@ public class Connection implements AutoCloseable{
       }
 
       //Read the rest of the Message and parse the lines into the right MessageTags
-      while ((line = reader.readLine()) != null) {
+      while ((line = reader.readLine()) != null && !line.equals("")) {
+
         Matcher m = ProtocolConstants.TAG_LAYOUT.matcher(line);
         if (m.matches() && m.groupCount() == 2) {
           try {
@@ -98,7 +105,7 @@ public class Connection implements AutoCloseable{
       msg.validate();
       return msg;
     }
-    throw new MessageFormatException(ErrorPriority.ERROR,"First line of the Message was empty.");
+    throw new MessageFormatException(ErrorPriority.ERROR, "First line of the Message was empty.");
   }
 
   public void sendMessage(Message msg) {
@@ -111,8 +118,8 @@ public class Connection implements AutoCloseable{
     sb.append("\r\n");
 
     //Tags:
-    for(MTag tag : MTag.values()) {
-      if(msg.hasTag(tag)) {
+    for (MTag tag : MTag.values()) {
+      if (msg.hasTag(tag)) {
         sb.append(tag.toString());
         sb.append(": ");
         sb.append(msg.getTagContent(tag));
