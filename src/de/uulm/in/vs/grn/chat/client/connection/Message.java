@@ -89,18 +89,4 @@ public class Message {
         return mType;
     }
 
-    public String toSendFormat() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(mType.toString())
-            .append(" ")
-            .append(ProtocolConstants.VERSION)
-            .append("\r\n");
-        for(MTag tag : MTag.values()) {
-            if(tags.containsKey(tag)) {
-                sb.append(MTag.formatTag(tag, tags.get(tag)));
-            }
-        }
-        sb.append("\r\n");
-        return sb.toString();
-    }
 }
