@@ -1,9 +1,8 @@
 package de.uulm.in.vs.grn.chat.client.view;
 
-import de.uulm.in.vs.grn.chat.client.Connection;
-import de.uulm.in.vs.grn.chat.client.ProtocolConstants;
+import de.uulm.in.vs.grn.chat.client.connection.Connection;
+import de.uulm.in.vs.grn.chat.client.connection.ProtocolConstants;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import javafx.event.ActionEvent;

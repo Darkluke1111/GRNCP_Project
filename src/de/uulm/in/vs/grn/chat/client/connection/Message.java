@@ -1,9 +1,10 @@
-package de.uulm.in.vs.grn.chat.client;
+package de.uulm.in.vs.grn.chat.client.connection;
+
+import de.uulm.in.vs.grn.chat.client.ErrorPriority;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**

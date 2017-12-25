@@ -1,4 +1,4 @@
-package de.uulm.in.vs.grn.chat.client;
+package de.uulm.in.vs.grn.chat.client.connection;
 
 import java.util.*;
 
