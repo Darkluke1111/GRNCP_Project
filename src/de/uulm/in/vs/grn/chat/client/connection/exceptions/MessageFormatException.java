@@ -1,6 +1,7 @@
-package de.uulm.in.vs.grn.chat.client.connection;
+package de.uulm.in.vs.grn.chat.client.connection.exceptions;
 
 import de.uulm.in.vs.grn.chat.client.ErrorPriority;
+import de.uulm.in.vs.grn.chat.client.connection.MTag;
 
 import java.util.Set;
 

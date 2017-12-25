@@ -1,8 +1,14 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
-import java.net.InetAddress;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.ConnectionException;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
 
-public class ServerConnector {
+import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.EventObject;
+import java.util.List;
+
+public class ServerConnector implements AutoCloseable {
     private InetAddress serverAddress;
     private int pubSubPort;
     private int commandPort;
@@ -12,18 +18,24 @@ public class ServerConnector {
     private Connection pubSubConnection;
     private CommandConnection commandConnection;
 
+    private List<ConnectionEventListener> listenerList;
+
     public ServerConnector(InetAddress serverAddress, int pubSubPort, int commandPort){
         this.serverAddress = serverAddress;
         this.pubSubPort = pubSubPort;
         this.commandPort = commandPort;
 
-        pubSubConnection = new Connection(serverAddress,pubSubPort);
-        commandConnection = new CommandConnection(serverAddress,commandPort);
+        listenerList = new ArrayList<>();
+
+        pubSubConnection = new Connection(serverAddress,pubSubPort, this);
+        commandConnection = new CommandConnection(serverAddress,commandPort, this);
     }
 
     public void connectPubSub() throws ConnectionException {
-        if(!pubSubConnection.isConnected())
+        if(!pubSubConnection.isConnected()) {
             pubSubConnection.connect();
+            pubSubConnection.waitForMessages();
+        }
     }
 
     public boolean connectCommand(String usrName) throws ConnectionException, MessageFormatException {
@@ -59,7 +71,17 @@ public class ServerConnector {
     }
 
     public void sendMessage(String text) throws MessageFormatException, ConnectionException {
-        commandConnection.sendMessage(Message.buildSendMessage(text));
+        commandConnection.writeMessage(Message.buildSendMessage(text));
+    }
+
+    public void regsisterListener(ConnectionEventListener listener) {
+        listenerList.add(listener);
+    }
+
+    void spreadEvent(EventObject event) {
+        for(ConnectionEventListener listener : listenerList) {
+            listener.onConnectionEvent(event);
+        }
     }
 
     public InetAddress getServerAddress() {
@@ -72,5 +94,12 @@ public class ServerConnector {
 
     public int getCommandPort() {
         return commandPort;
+    }
+
+    @Override
+    public void close() throws Exception {
+        disconnectPubSub();
+        disconnectCommand();
+        listenerList = null;
     }
 }

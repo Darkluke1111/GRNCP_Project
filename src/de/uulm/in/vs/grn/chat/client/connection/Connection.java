@@ -1,14 +1,16 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
 import de.uulm.in.vs.grn.chat.client.*;
+import de.uulm.in.vs.grn.chat.client.connection.events.MessageEvent;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.ConnectionException;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
 
 import java.io.*;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.util.regex.Matcher;
 
-public class Connection implements AutoCloseable {
+class Connection implements AutoCloseable {
     protected final InetAddress serverHost;
     protected final int serverPort;
 
@@ -16,9 +18,12 @@ public class Connection implements AutoCloseable {
     protected BufferedReader reader;
     protected BufferedWriter writer;
 
-    public Connection(InetAddress serverHost, int serverPort) {
+    protected ServerConnector connector;
+
+    public Connection(InetAddress serverHost, int serverPort, ServerConnector connector) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
+        this.connector = connector;
     }
 
     public void disconnect() {
@@ -105,7 +110,7 @@ public class Connection implements AutoCloseable {
         throw new MessageFormatException(ErrorPriority.ERROR, "First line of the Message was empty.");
     }
 
-    public void sendMessage(Message msg) throws ConnectionException {
+    public void writeMessage(Message msg) throws ConnectionException {
         StringBuilder sb = new StringBuilder();
 
         //Zeile 1:
@@ -129,5 +134,21 @@ public class Connection implements AutoCloseable {
         } catch(IOException e) {
             throw new ConnectionException("Wasn't able to access socket outputstream, was the connection reset?", e);
         }
+    }
+
+    public void waitForMessages() {
+        new Thread(() -> {
+           while(isConnected()) {
+               try {
+                   Message msg = readMessage();
+                   MessageEvent event = new MessageEvent(this,msg);
+                   connector.spreadEvent(event);
+               } catch (MessageFormatException e) {
+                   e.printStackTrace();
+               } catch (ConnectionException e) {
+                   e.printStackTrace();
+               }
+           }
+        });
     }
 }

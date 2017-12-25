@@ -1,36 +1,39 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
 import de.uulm.in.vs.grn.chat.client.ErrorPriority;
+import de.uulm.in.vs.grn.chat.client.connection.events.UserlistUpdateEvent;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.ConnectionException;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
 
 import java.net.InetAddress;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class CommandConnection extends Connection {
+class CommandConnection extends Connection {
 
     private Timer pingTimer;
 
-    public CommandConnection(InetAddress serverHost, int serverPort) {
-        super(serverHost, serverPort);
+    public CommandConnection(InetAddress serverHost, int serverPort, ServerConnector connector) {
+        super(serverHost, serverPort, connector);
     }
 
     public Message login(String usrName) throws ConnectionException, MessageFormatException {
 
-            Message msg = Message.buildLoginMessage(usrName);
+        Message msg = Message.buildLoginMessage(usrName);
 
-            sendMessage(msg);
+        writeMessage(msg);
 
-            Message response = readMessage();
+        Message response = readMessage();
 
-            if (response.getType() != MessageType.LOGGEDIN || response.getType() != MessageType.ERROR)
-                throw new MessageFormatException(ErrorPriority.ERROR, "Expected LOGGEDIN or ERROR Message but got " + response.getType());
-            return response;
+        if (response.getType() != MessageType.LOGGEDIN || response.getType() != MessageType.ERROR)
+            throw new MessageFormatException(ErrorPriority.ERROR, "Expected LOGGEDIN or ERROR Message but got " + response.getType());
+        return response;
 
     }
 
     public void logout() throws MessageFormatException, ConnectionException {
         Message msg = Message.buildByeMessage();
-        sendMessage(msg);
+        writeMessage(msg);
         pingTimer.cancel();
         pingTimer.purge();
         Message response = readMessage();
@@ -41,9 +44,25 @@ public class CommandConnection extends Connection {
 
     }
 
+    public boolean send(String text) throws MessageFormatException, ConnectionException {
+
+        writeMessage(Message.buildSendMessage(text));
+
+        Message response = readMessage();
+
+        if (response.getType() == MessageType.ERROR) {
+            return true;
+        }
+        if (response.getType() == MessageType.SENT) {
+            return true;
+        }
+        throw new MessageFormatException(ErrorPriority.ERROR, "Expected ERROR or MESSAGE type but got " + response.getType());
+
+    }
+
     public Message ping() throws MessageFormatException, ConnectionException {
         Message msg = Message.buildPingMessage();
-        sendMessage(msg);
+        writeMessage(msg);
 
         Message response = readMessage();
         if (response.getType() != MessageType.PONG) {
@@ -58,14 +77,14 @@ public class CommandConnection extends Connection {
             @Override
             public void run() {
                 try {
-                    if(!isConnected()) {
+                    if (!isConnected()) {
                         pingTimer.cancel();
                         pingTimer.purge();
                     } else {
                         Message response = ping();
                         response.getTagContent(MTag.Usernames);
                         UserlistUpdateEvent event = new UserlistUpdateEvent(this, response);
-                        //TODO throw event
+                        connector.spreadEvent(event);
                     }
                 } catch (MessageFormatException e) {
                     e.printStackTrace();
@@ -73,6 +92,6 @@ public class CommandConnection extends Connection {
                     e.printStackTrace();
                 }
             }
-        },period * 1000, period * 1000);
+        }, period * 1000, period * 1000);
     }
 }

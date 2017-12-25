@@ -1,11 +1,17 @@
-package de.uulm.in.vs.grn.chat.client.connection;
+package de.uulm.in.vs.grn.chat.client.connection.events;
+
+import de.uulm.in.vs.grn.chat.client.connection.Message;
 
 import java.util.EventObject;
 
 public class UserlistUpdateEvent extends EventObject {
-    Message msg;
+    private Message msg;
     public UserlistUpdateEvent(Object source, Message msg) {
         super(source);
         this.msg = msg;
+    }
+
+    public Message getMsg() {
+        return msg;
     }
 }

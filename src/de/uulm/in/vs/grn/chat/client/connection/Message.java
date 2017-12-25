@@ -1,6 +1,7 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
 import de.uulm.in.vs.grn.chat.client.ErrorPriority;
+import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
 
 import java.util.HashMap;
 import java.util.Map;
