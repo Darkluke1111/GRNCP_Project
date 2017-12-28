@@ -1,6 +1,7 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
 import de.uulm.in.vs.grn.chat.client.*;
+import de.uulm.in.vs.grn.chat.client.connection.events.JoinEvent;
 import de.uulm.in.vs.grn.chat.client.connection.events.MessageEvent;
 import de.uulm.in.vs.grn.chat.client.connection.exceptions.ConnectionException;
 import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
@@ -8,9 +9,10 @@ import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatExceptio
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.util.EventObject;
 import java.util.regex.Matcher;
 
-class Connection implements AutoCloseable {
+abstract class Connection implements AutoCloseable {
     protected final InetAddress serverHost;
     protected final int serverPort;
 
@@ -18,15 +20,16 @@ class Connection implements AutoCloseable {
     protected BufferedReader reader;
     protected BufferedWriter writer;
 
-    protected ServerConnector connector;
+    protected EventHandler connector;
 
-    public Connection(InetAddress serverHost, int serverPort, ServerConnector connector) {
+    public Connection(InetAddress serverHost, int serverPort, EventHandler connector) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.connector = connector;
     }
 
-    public void disconnect() {
+    public synchronized void disconnect() {
+        if(!isConnected()) return;
         try {
             connection.close();
             reader.close();
@@ -52,7 +55,7 @@ class Connection implements AutoCloseable {
         writer.close();
     }
 
-    public void connect() throws ConnectionException {
+    public synchronized void connect() throws ConnectionException {
         try {
             connection = new Socket(serverHost, serverPort);
 
@@ -63,7 +66,7 @@ class Connection implements AutoCloseable {
         }
     }
 
-    public Message readMessage() throws MessageFormatException, ConnectionException {
+    public synchronized Message readMessage() throws MessageFormatException, ConnectionException {
         String line;
         Message msg;
         try {
@@ -110,45 +113,13 @@ class Connection implements AutoCloseable {
         throw new MessageFormatException(ErrorPriority.ERROR, "First line of the Message was empty.");
     }
 
-    public void writeMessage(Message msg) throws ConnectionException {
-        StringBuilder sb = new StringBuilder();
-
-        //Zeile 1:
-        sb.append(msg.getType().toString());
-        sb.append(" ");
-        sb.append(ProtocolConstants.VERSION);
-        sb.append("\r\n");
-
-        //Tags:
-        for (MTag tag : MTag.values()) {
-            if (msg.hasTag(tag)) {
-                sb.append(tag.toString());
-                sb.append(": ");
-                sb.append(msg.getTagContent(tag));
-                sb.append("\r\n");
-            }
-        }
-        sb.append("\r\n");
+    public synchronized void writeMessage(Message msg) throws ConnectionException {
+            String msgString = msg.toString();
         try {
-            writer.write(sb.toString());
+            writer.write(msgString);
+            writer.flush();
         } catch(IOException e) {
             throw new ConnectionException("Wasn't able to access socket outputstream, was the connection reset?", e);
         }
-    }
-
-    public void waitForMessages() {
-        new Thread(() -> {
-           while(isConnected()) {
-               try {
-                   Message msg = readMessage();
-                   MessageEvent event = new MessageEvent(this,msg);
-                   connector.spreadEvent(event);
-               } catch (MessageFormatException e) {
-                   e.printStackTrace();
-               } catch (ConnectionException e) {
-                   e.printStackTrace();
-               }
-           }
-        });
     }
 }

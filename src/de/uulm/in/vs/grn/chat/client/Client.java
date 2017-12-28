@@ -16,6 +16,8 @@ import java.net.UnknownHostException;
 public class Client extends Application{
 
     private static ServerConnector connector;
+    private ChatViewController controller;
+    public static Stage primaryStage;
 
     public static void main(String args[]) {
         try {
@@ -36,13 +38,20 @@ public class Client extends Application{
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+      Client.primaryStage = primaryStage;
         ChatView view = new ChatView();
-        ChatViewController c = new ChatViewController();
-        view.connectHandlers(c);
+        controller = new ChatViewController();
+        view.connectHandlers(controller);
         primaryStage.setScene(view.scene);
         primaryStage.setHeight(600);
         primaryStage.setWidth(600);
         primaryStage.setTitle("GRNCP Chat Client");
         primaryStage.show();
+    }
+
+    @Override
+    public void stop() throws Exception {
+      controller.handleDisconnectPubSub();
+      controller.handleDisconnectCommand();
     }
 }

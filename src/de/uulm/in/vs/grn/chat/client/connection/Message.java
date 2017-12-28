@@ -90,4 +90,26 @@ public class Message {
         return mType;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        //Zeile 1:
+        sb.append(getType().toString());
+        sb.append(" ");
+        sb.append(ProtocolConstants.VERSION);
+        sb.append("\r\n");
+
+        //Tags:
+        for (MTag tag : MTag.values()) {
+            if (hasTag(tag)) {
+                sb.append(tag.toString());
+                sb.append(": ");
+                sb.append(getTagContent(tag));
+                sb.append("\r\n");
+            }
+        }
+        sb.append("\r\n");
+        return sb.toString();
+    }
 }

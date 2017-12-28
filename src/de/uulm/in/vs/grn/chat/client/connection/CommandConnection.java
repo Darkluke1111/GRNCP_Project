@@ -12,26 +12,30 @@ import java.util.TimerTask;
 class CommandConnection extends Connection {
 
     private Timer pingTimer;
+    private int pingPeriod;
 
     public CommandConnection(InetAddress serverHost, int serverPort, ServerConnector connector) {
         super(serverHost, serverPort, connector);
+        pingPeriod = 60;
     }
 
-    public Message login(String usrName) throws ConnectionException, MessageFormatException {
+    public synchronized Message login(String usrName) throws ConnectionException, MessageFormatException {
 
         Message msg = Message.buildLoginMessage(usrName);
 
         writeMessage(msg);
-
+        System.out.println("Wrote Message!");
         Message response = readMessage();
-
-        if (response.getType() != MessageType.LOGGEDIN || response.getType() != MessageType.ERROR)
+        if(response.getType() == MessageType.LOGGEDIN) {
+          startPeriodicPing();
+        }
+        if (response.getType() != MessageType.LOGGEDIN && response.getType() != MessageType.ERROR)
             throw new MessageFormatException(ErrorPriority.ERROR, "Expected LOGGEDIN or ERROR Message but got " + response.getType());
         return response;
 
     }
 
-    public void logout() throws MessageFormatException, ConnectionException {
+    public synchronized void logout() throws MessageFormatException, ConnectionException {
         Message msg = Message.buildByeMessage();
         writeMessage(msg);
         pingTimer.cancel();
@@ -39,15 +43,16 @@ class CommandConnection extends Connection {
         Message response = readMessage();
 
         if (response.getType() != MessageType.BYEBYE) {
+            System.out.println(response);
             throw new MessageFormatException(ErrorPriority.ERROR, "Expected BYEBYE Message but got " + response.getType());
+
         }
 
     }
 
-    public boolean send(String text) throws MessageFormatException, ConnectionException {
+    public synchronized boolean send(String text) throws MessageFormatException, ConnectionException {
 
         writeMessage(Message.buildSendMessage(text));
-
         Message response = readMessage();
 
         if (response.getType() == MessageType.ERROR) {
@@ -56,22 +61,23 @@ class CommandConnection extends Connection {
         if (response.getType() == MessageType.SENT) {
             return true;
         }
-        throw new MessageFormatException(ErrorPriority.ERROR, "Expected ERROR or MESSAGE type but got " + response.getType());
+        throw new MessageFormatException(ErrorPriority.ERROR, "Expected ERROR or SENT type but got " + response.getType());
 
     }
 
-    public Message ping() throws MessageFormatException, ConnectionException {
+    public synchronized Message ping() throws MessageFormatException, ConnectionException {
         Message msg = Message.buildPingMessage();
         writeMessage(msg);
 
         Message response = readMessage();
+        System.out.println(response);
         if (response.getType() != MessageType.PONG) {
             throw new MessageFormatException(ErrorPriority.ERROR, "Expected PONG Message but got " + response.getType());
         }
         return response;
     }
 
-    public void startPeriodicPing(int period) {
+    private void startPeriodicPing() {
         pingTimer = new Timer();
         pingTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -92,6 +98,6 @@ class CommandConnection extends Connection {
                     e.printStackTrace();
                 }
             }
-        }, period * 1000, period * 1000);
+        }, 0, pingPeriod * 1000);
     }
 }
