@@ -7,33 +7,40 @@ import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatExceptio
 import java.net.InetAddress;
 import java.util.EventObject;
 
-public class PubSubConnection extends Connection{
+public class PubSubConnection extends Connection {
 
   public PubSubConnection(InetAddress serverHost, int serverPort, ServerConnector connector) {
     super(serverHost, serverPort, connector);
   }
 
-  public void waitForMessages() {
+  @Override
+  public synchronized void connect() throws ConnectionException {
+    super.connect();
+    waitForMessages();
+  }
+
+  private void waitForMessages() {
     new Thread(() -> {
-      while(isConnected()) {
+      while (isConnected()) {
+        Message msg = null;
         try {
-          Message msg = readMessage();
-          EventObject event = null;
-          if(msg.getType() == MessageType.MESSAGE) {
-            event = new MessageEvent(this, msg);
-          }
-          if(msg.getType() == MessageType.EVENT) {
-            event = new JoinEvent(this, msg);
-          }
-          if(event != null) {
-            connector.spreadEvent(event);
-          }
-        } catch (MessageFormatException e) {
+          msg = readMessage();
 
-        } catch (ConnectionException e) {
-
+        EventObject event = null;
+          switch (msg.getType()) {
+            case MESSAGE:
+              event = new MessageEvent(this, msg);
+              break;
+            case EVENT:
+              event = new JoinEvent(this, msg);
+              break;
+            default:
+          }
+          connector.spreadEvent(event);
+        } catch (MessageFormatException | ConnectionException e) {
+          //ignore
         }
       }
-    }).start();
+      }).start();
+    }
   }
-}

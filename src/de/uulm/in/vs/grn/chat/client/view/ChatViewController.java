@@ -4,6 +4,7 @@ import de.uulm.in.vs.grn.chat.client.Client;
 import de.uulm.in.vs.grn.chat.client.connection.ConnectionEventListener;
 import de.uulm.in.vs.grn.chat.client.connection.MTag;
 import de.uulm.in.vs.grn.chat.client.connection.ServerConnector;
+import de.uulm.in.vs.grn.chat.client.connection.events.ConnectionExpiredEvent;
 import de.uulm.in.vs.grn.chat.client.connection.events.JoinEvent;
 import de.uulm.in.vs.grn.chat.client.connection.events.MessageEvent;
 import de.uulm.in.vs.grn.chat.client.connection.events.UserlistUpdateEvent;
@@ -25,7 +26,8 @@ public class ChatViewController implements ConnectionEventListener {
 
   public ChatViewController() {
     connector = Client.getConnector();
-    connector.regsisterListener(this);
+    connector.registerListener(this);
+
   }
 
   public void handleSendMessage(String text) {
@@ -33,90 +35,91 @@ public class ChatViewController implements ConnectionEventListener {
     try {
       connector.sendMessage(text);
       view.infoLabel.setText("Message sent");
-    } catch (MessageFormatException e) {
-      view.infoLabel.setText("Error: " + e.getMessage());
-    } catch (ConnectionException e) {
+    } catch (MessageFormatException | ConnectionException e) {
       view.infoLabel.setText("Error: " + e.getMessage());
     }
   }
 
-  public void handleConnectPubSub() {
+  public void handleConnect() {
     try {
+      connector.connectCommand();
+      login();
+
       connector.connectPubSub();
-      view.infoLabel.setText("PubSubConnection established.");
-    } catch (ConnectionException e) {
+    } catch (ConnectionException | MessageFormatException e) {
       view.infoLabel.setText("Error: " + e.getMessage());
     }
   }
 
-  public void handleConnectCommand() {
-    TextInputDialog nameInput = new TextInputDialog("Username");
-    nameInput.setTitle("Username Selection");
-    nameInput.setHeaderText("Select you Username");
-
-    Optional<String> result = nameInput.showAndWait();
-    if (!result.isPresent()) {
-      return;
-    } else {
-      String usrName = result.get();
-
-      try {
-        boolean successfull = connector.connectCommand(usrName);
-        if (!successfull) {
-          view.infoLabel.setText("Username already in use.");
-        } else {
-          view.infoLabel.setText("CommandConnection established with username " + usrName);
-        }
-      } catch (ConnectionException | MessageFormatException e) {
-        view.infoLabel.setText("Error: " + e.getMessage());
-      }
-    }
-
-  }
-
-  public void handleDisconnectCommand() {
+  public void handleDisconnect() {
     try {
+      connector.disconnectPubSub();
+      connector.logoutCommand();
       connector.disconnectCommand();
     } catch (MessageFormatException | ConnectionException e) {
       view.infoLabel.setText("Error: " + e.getMessage());
     }
   }
 
-  public void handleDisconnectPubSub() {
-    connector.disconnectPubSub();
-  }
-
-
   @Override
   public void onConnectionEvent(EventObject event) {
-    if (event instanceof MessageEvent) {
-      MessageEvent me = ((MessageEvent) event);
-      String text = me.getMsg().getTagContent(MTag.Text);
-      String name = me.getMsg().getTagContent(MTag.Username);
+  }
 
-      Text userName = new Text();
-      userName.setStyle("-fx-fill: #4F8A10;-fx-font-weight:bold;");
-      userName.setText(name + ":");
+  @Override
+  public void onJoinEvent(JoinEvent event) {
+    Text eventText = new Text();
+    eventText.setStyle("-fx-fill: RED;-fx-font-weight:normal;");
+    eventText.setText(event.getMsg().getTagContent(MTag.Description) + "\n");
+    Platform.runLater(() -> view.chatBox.getChildren().add(eventText));
+  }
 
-      Text chat = new Text();
-      chat.setText(text + "\n");
-      Platform.runLater(() -> view.chatBox.getChildren().addAll(userName, chat));
-    }
+  @Override
+  public void onMessageEvent(MessageEvent event) {
+    String text = event.getMsg().getTagContent(MTag.Text);
+    String name = event.getMsg().getTagContent(MTag.Username);
 
-    if (event instanceof JoinEvent) {
-      JoinEvent je = (JoinEvent) event;
-      Text eventText = new Text();
-      eventText.setStyle("-fx-fill: RED;-fx-font-weight:normal;");
-      eventText.setText(je.getMsg().getTagContent(MTag.Description) + "\n");
-      Platform.runLater(() -> view.chatBox.getChildren().add(eventText));
-    }
-    if (event instanceof UserlistUpdateEvent) {
-      String[] users = ((UserlistUpdateEvent) event).getMsg().getTagContent(MTag.Usernames).trim().split(",");
-      Platform.runLater(() -> {
-        view.userList.getItems().clear();
-        view.userList.getItems().addAll(users);
-      });
+    Text userName = new Text();
+    userName.setStyle("-fx-fill: #4F8A10;-fx-font-weight:bold;");
+    userName.setText(name + ":");
 
+    Text chat = new Text();
+    chat.setText(text + "\n");
+    Platform.runLater(() -> view.chatBox.getChildren().addAll(userName, chat));
+  }
+
+  @Override
+  public void onUserlistUpdateEvent(UserlistUpdateEvent event) {
+    String[] users = event.getMsg().getTagContent(MTag.Usernames).trim().split(",");
+    Platform.runLater(() -> {
+      view.userList.getItems().clear();
+      view.userList.getItems().addAll(users);
+    });
+  }
+
+  @Override
+  public void onConnectionExpiredEvent(ConnectionExpiredEvent event) {
+
+  }
+
+  private void login() throws ConnectionException, MessageFormatException {
+    while (true) {
+      TextInputDialog nameInput = new TextInputDialog("Username");
+      nameInput.setTitle("Username Selection");
+      nameInput.setHeaderText("Select you Username");
+      Optional<String> result = nameInput.showAndWait();
+      if (!result.isPresent()) {
+        continue;
+      }
+      String usrName = result.get();
+
+      boolean successfull = connector.loginCommand(usrName);
+      if (!successfull) {
+        view.infoLabel.setText("Username already in use.");
+        continue;
+      } else {
+        view.infoLabel.setText("Login successfull with username " + usrName);
+        return;
+      }
     }
   }
 }

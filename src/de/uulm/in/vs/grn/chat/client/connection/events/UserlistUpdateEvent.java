@@ -4,7 +4,7 @@ import de.uulm.in.vs.grn.chat.client.connection.Message;
 
 import java.util.EventObject;
 
-public class UserlistUpdateEvent extends EventObject {
+public class UserlistUpdateEvent extends ConnectionEvent {
     private Message msg;
     public UserlistUpdateEvent(Object source, Message msg) {
         super(source);

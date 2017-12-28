@@ -125,13 +125,11 @@ public class ChatView {
     send.setOnAction(e -> c.handleSendMessage(inputBox.getText()));
 
     connect.setOnAction(e -> {
-      c.handleConnectPubSub();
-      c.handleConnectCommand();
+      c.handleConnect();
     });
 
     disconnect.setOnAction(e -> {
-      c.handleDisconnectCommand();
-      c.handleDisconnectPubSub();
+      c.handleDisconnect();
     });
   }
 }

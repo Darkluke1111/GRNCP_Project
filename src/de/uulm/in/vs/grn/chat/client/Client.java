@@ -51,7 +51,6 @@ public class Client extends Application{
 
     @Override
     public void stop() throws Exception {
-      controller.handleDisconnectPubSub();
-      controller.handleDisconnectCommand();
+      controller.handleDisconnect();
     }
 }

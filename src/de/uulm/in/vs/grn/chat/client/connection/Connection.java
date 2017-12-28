@@ -13,6 +13,8 @@ import java.util.EventObject;
 import java.util.regex.Matcher;
 
 abstract class Connection implements AutoCloseable {
+    protected boolean debug = true;
+
     protected final InetAddress serverHost;
     protected final int serverPort;
 
@@ -29,7 +31,6 @@ abstract class Connection implements AutoCloseable {
     }
 
     public synchronized void disconnect() {
-        if(!isConnected()) return;
         try {
             connection.close();
             reader.close();
@@ -40,7 +41,7 @@ abstract class Connection implements AutoCloseable {
     }
 
 
-    public boolean isConnected() {
+    public synchronized boolean isConnected() {
         if (connection == null || connection.isClosed()) {
             return false;
         } else {
@@ -57,6 +58,7 @@ abstract class Connection implements AutoCloseable {
 
     public synchronized void connect() throws ConnectionException {
         try {
+            if(isConnected()) return;
             connection = new Socket(serverHost, serverPort);
 
             reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -66,7 +68,7 @@ abstract class Connection implements AutoCloseable {
         }
     }
 
-    public synchronized Message readMessage() throws MessageFormatException, ConnectionException {
+    protected synchronized Message readMessage() throws MessageFormatException, ConnectionException {
         String line;
         Message msg;
         try {
@@ -105,6 +107,9 @@ abstract class Connection implements AutoCloseable {
 
                 //Validate the Message
                 msg.validate();
+                if(debug) {
+                    System.out.println(msg.toString());
+                }
                 return msg;
             }
         } catch(IOException e) {
@@ -113,9 +118,13 @@ abstract class Connection implements AutoCloseable {
         throw new MessageFormatException(ErrorPriority.ERROR, "First line of the Message was empty.");
     }
 
-    public synchronized void writeMessage(Message msg) throws ConnectionException {
+    protected synchronized void writeMessage(Message msg) throws ConnectionException {
             String msgString = msg.toString();
+
         try {
+            if (debug) {
+                System.out.println(msgString);
+            }
             writer.write(msgString);
             writer.flush();
         } catch(IOException e) {

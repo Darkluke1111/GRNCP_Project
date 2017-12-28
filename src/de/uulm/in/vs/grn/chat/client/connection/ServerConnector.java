@@ -1,6 +1,9 @@
 package de.uulm.in.vs.grn.chat.client.connection;
 
-import de.uulm.in.vs.grn.chat.client.ErrorPriority;
+import de.uulm.in.vs.grn.chat.client.connection.events.ConnectionExpiredEvent;
+import de.uulm.in.vs.grn.chat.client.connection.events.JoinEvent;
+import de.uulm.in.vs.grn.chat.client.connection.events.MessageEvent;
+import de.uulm.in.vs.grn.chat.client.connection.events.UserlistUpdateEvent;
 import de.uulm.in.vs.grn.chat.client.connection.exceptions.ConnectionException;
 import de.uulm.in.vs.grn.chat.client.connection.exceptions.MessageFormatException;
 import java.net.InetAddress;
@@ -9,11 +12,7 @@ import java.util.EventObject;
 import java.util.List;
 
 public class ServerConnector implements AutoCloseable, EventHandler {
-  private InetAddress serverAddress;
-  private int pubSubPort;
-  private int commandPort;
 
-  private static final int pingDurationSeconds = 60;
 
   private PubSubConnection pubSubConnection;
   private CommandConnection commandConnection;
@@ -21,9 +20,6 @@ public class ServerConnector implements AutoCloseable, EventHandler {
   private List<ConnectionEventListener> listenerList;
 
   public ServerConnector(InetAddress serverAddress, int pubSubPort, int commandPort) {
-    this.serverAddress = serverAddress;
-    this.pubSubPort = pubSubPort;
-    this.commandPort = commandPort;
 
     listenerList = new ArrayList<>();
 
@@ -32,52 +28,34 @@ public class ServerConnector implements AutoCloseable, EventHandler {
   }
 
   public void connectPubSub() throws ConnectionException {
-    if (!pubSubConnection.isConnected()) {
       pubSubConnection.connect();
-      pubSubConnection.waitForMessages();
-    }
   }
 
-  public boolean connectCommand(String usrName) throws ConnectionException, MessageFormatException {
-    if (!commandConnection.isConnected()) {
-      commandConnection.connect();
-    }
+  public void connectCommand() throws ConnectionException {
+    commandConnection.connect();
+  }
 
-    Message response = commandConnection.login(usrName);
-
-    switch(response.getType()) {
-      case ERROR:
-        return false;
-      case LOGGEDIN:
-        return true;
-      default:
-        throw new MessageFormatException(ErrorPriority.ERROR,
-            "Expected LOGGEDIN response but got "
-                + response.getType());
-    }
+  public boolean loginCommand(String usrName)
+      throws ConnectionException, MessageFormatException {
+    return commandConnection.login(usrName);
   }
 
   public void disconnectPubSub() {
     pubSubConnection.disconnect();
-    try {
-      pubSubConnection.close();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
-  public void disconnectCommand() throws MessageFormatException, ConnectionException {
+  public void logoutCommand()
+      throws MessageFormatException, ConnectionException {
     commandConnection.logout();
-    commandConnection.disconnect();
-    try {
-      pubSubConnection.close();
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 
-  public void sendMessage(String text) throws MessageFormatException, ConnectionException {
+  public void disconnectCommand()
+      throws MessageFormatException, ConnectionException {
+    commandConnection.disconnect();
+  }
 
+  public void sendMessage(String text)
+      throws MessageFormatException, ConnectionException {
     commandConnection.send(text);
   }
 
@@ -88,27 +66,28 @@ public class ServerConnector implements AutoCloseable, EventHandler {
 
 
   @Override
-  public void spreadEvent(EventObject event) {
+  public synchronized void spreadEvent(EventObject event) {
     for (ConnectionEventListener listener : listenerList) {
       listener.onConnectionEvent(event);
+      if(event instanceof JoinEvent) {
+        listener.onJoinEvent((JoinEvent) event);
+      }
+      if(event instanceof MessageEvent) {
+        listener.onMessageEvent((MessageEvent) event);
+      }
+      if(event instanceof UserlistUpdateEvent) {
+        listener.onUserlistUpdateEvent((UserlistUpdateEvent) event);
+      }
+      if(event instanceof ConnectionExpiredEvent) {
+        listener.onConnectionExpiredEvent((ConnectionExpiredEvent) event);
+      }
     }
-  }
-
-  public InetAddress getServerAddress() {
-    return serverAddress;
-  }
-
-  public int getPubSubPort() {
-    return pubSubPort;
-  }
-
-  public int getCommandPort() {
-    return commandPort;
   }
 
   @Override
   public void close() throws Exception {
     disconnectPubSub();
+    logoutCommand();
     disconnectCommand();
     listenerList = null;
   }
